@@ -121,7 +121,6 @@
 <script>
   var img = document.getElementById('petImg');
   var bubble = document.getElementById('bubble');
-
   // 清掉所有动画类
   function clearAnim() {
     img.classList.remove('react', 'shake', 'spin', 'angry', 'doubleTap', 'hide', 'fling', 'swim', 'angryFilter');
@@ -129,53 +128,96 @@
   }
 
   // ---- 连戳递进（生气） ----
-  var tapCount = 0;
-  var lastTapTime = 0;
-  var angryTimer = null;
+  var tapCount = 0;       // 连戳计数
+  var lastTapTime = 0;    // 上次戳的时间
+  var angryTimer = null;  // 消气定时器
+  var isAngry = false;    // 生气霸屏标志
+  var animLock = false;   // 动画锁：动画播放期间只计数不升级
+  var pendingLevel = 0;   // 动画锁期间累计的升级需求
 
-  // 单击反应（含连戳升级）
-  window.petReact = function() {
+  // 统一连戳计数入口（Kotlin每次点击都调这里）
+  window.petTap = function() {
     var now = Date.now();
-    if (now - lastTapTime < 800) {
+    // 连戳判定窗口：1000ms（符合正常人连续戳的节奏）
+    if (now - lastTapTime < 1000) {
       tapCount++;
     } else {
       tapCount = 1;
     }
     lastTapTime = now;
+    // 生气期间不升级，只保持计数
+    if (isAngry) return;
+    // 动画锁：动画播放期间只计数，等播完再升级
+    if (animLock) {
+      pendingLevel = tapCount;
+      return;
+    }
+    doUpgrade();
+  };
 
+  // 执行升级（跳->抖->转->生气）
+  function doUpgrade() {
     clearAnim();
     img.classList.remove('angryFilter');
     bubble.classList.remove('show');
-
     if (tapCount >= 6) {
-      // 生气：鼓起来变红 + 气泡
+      // 生气：鼓起来变红 + 气泡（霸屏）
+      isAngry = true;
       img.classList.add('angry', 'angryFilter');
       bubble.classList.add('show');
       if (angryTimer) clearTimeout(angryTimer);
       angryTimer = setTimeout(function() {
         img.classList.remove('angry', 'angryFilter');
         bubble.classList.remove('show');
+        isAngry = false;
         tapCount = 0;
+        pendingLevel = 0;
       }, 3000);
-    } else if (tapCount >= 5) {
-      img.classList.add('spin');
-    } else if (tapCount >= 3) {
-      img.classList.add('shake');
-    } else {
-      img.classList.add('react');
+      return;
     }
-  };
+    var level = tapCount;
+    var animClass, animMs;
+    if (level >= 5) {
+      animClass = 'spin'; animMs = 500;
+    } else if (level >= 3) {
+      animClass = 'shake'; animMs = 400;
+    } else {
+      animClass = 'react'; animMs = 600;
+    }
+    img.classList.add(animClass);
+    // 动画锁：动画期间只计数不升级，播完再处理累计
+    animLock = true;
+    setTimeout(function() {
+      animLock = false;
+      // 动画期间又戳了，继续升级
+      if (pendingLevel > level) {
+        var p = pendingLevel;
+        pendingLevel = 0;
+        tapCount = p;
+        doUpgrade();
+      } else {
+        pendingLevel = 0;
+      }
+    }, animMs);
+  }
 
+  // 单击反应（走petTap统一计数升级，不再单独处理）
+  window.petReact = function() {
+    if (isAngry) return;  // 生气霸屏
+    // 单击就是一次戳，交给petTap处理
+    window.petTap();
+  };
   // 双击特殊动画
   window.petDoubleTap = function() {
+    if (isAngry) return;  // 生气霸屏
     clearAnim();
     img.classList.remove('angryFilter');
     bubble.classList.remove('show');
     img.classList.add('doubleTap');
   };
-
   // 长按隐藏
   window.petHide = function() {
+    if (isAngry) return;  // 生气霸屏
     clearAnim();
     img.classList.remove('angryFilter');
     bubble.classList.remove('show');
@@ -184,9 +226,9 @@
       img.classList.remove('hide');
     }, 2000);
   };
-
   // ---- 甩动（Fling） ----
   window.petFling = function(dx, dy) {
+    if (isAngry) return;  // 生气霸屏
     clearAnim();
     img.classList.remove('angryFilter');
     bubble.classList.remove('show');

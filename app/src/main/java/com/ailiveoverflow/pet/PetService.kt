@@ -152,9 +152,10 @@ class PetService : Service() {
                 }
                 val now = System.currentTimeMillis()
                 if (now - lastTapTime < 300) {
-                    // 双击 -> 特殊动画
+                    // 双击 -> 特殊动画（同时计入连戳计数）
                     lastTapTime = 0
                     pendingSingleTap = false
+                    webView.evaluateJavascript("window.petTap();", null)
                     webView.evaluateJavascript("window.petDoubleTap();", null)
                 } else {
                     // 可能是单击，延迟300ms确认不是双击
