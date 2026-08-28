@@ -56,22 +56,24 @@
 </div>
 <script>
   var img = document.getElementById('petImg');
+  // 清掉所有动画类
+  function clearAnim() {
+    img.classList.remove('react', 'doubleTap', 'hide');
+    void img.offsetWidth;
+  }
   // 点击随机反应
   window.petReact = function() {
-    img.classList.remove('react');
-    void img.offsetWidth; // 重置动画
+    clearAnim();
     img.classList.add('react');
   };
   // 双击特殊动画
   window.petDoubleTap = function() {
-    img.classList.remove('doubleTap');
-    void img.offsetWidth;
+    clearAnim();
     img.classList.add('doubleTap');
   };
   // 长按隐藏
   window.petHide = function() {
-    img.classList.remove('hide');
-    void img.offsetWidth;
+    clearAnim();
     img.classList.add('hide');
     // 隐藏后2秒恢复
     setTimeout(function() {
