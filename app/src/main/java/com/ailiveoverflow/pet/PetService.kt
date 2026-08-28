@@ -36,6 +36,7 @@ class PetService : Service() {
 
     // 双击检测
     private var lastTapTime = 0L
+    private var downTime = 0L
     private var pendingSingleTap = false
     // 长按检测
     private val longPressHandler = Handler(Looper.getMainLooper())
@@ -114,6 +115,7 @@ class PetService : Service() {
                 initialTouchY = event.rawY
                 isDragging = false
                 longPressTriggered = false
+                downTime = System.currentTimeMillis()
                 // 启动长按检测（800ms后触发）
                 longPressHandler.postDelayed(longPressRunnable, 800)
             }
@@ -133,6 +135,17 @@ class PetService : Service() {
                 longPressHandler.removeCallbacks(longPressRunnable)
                 if (isDragging || longPressTriggered) {
                     // 拖拽或长按过，不触发点击
+                    return true
+                }
+                // 甩动检测：快速滑动（位移>50px且耗时<250ms）触发fling
+                val upX = event.rawX
+                val upY = event.rawY
+                val dx = (upX - initialTouchX).toInt()
+                val dy = (upY - initialTouchY).toInt()
+                val dist = Math.sqrt((dx * dx + dy * dy).toDouble())
+                val dur = System.currentTimeMillis() - downTime
+                if (dist > 50 && dur < 250) {
+                    webView.evaluateJavascript("window.petFling($dx, $dy);", null)
                     return true
                 }
                 val now = System.currentTimeMillis()

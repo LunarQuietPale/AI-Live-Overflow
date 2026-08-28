@@ -33,6 +33,47 @@
     60% { transform: translateY(0) scale(0.95); }
     100% { transform: translateY(0) scale(1); }
   }
+  /* 连戳升级：抖 */
+  .shake { animation: shake 0.4s ease !important; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0) rotate(0); }
+    20% { transform: translateX(-8px) rotate(-8deg); }
+    40% { transform: translateX(8px) rotate(8deg); }
+    60% { transform: translateX(-6px) rotate(-6deg); }
+    80% { transform: translateX(6px) rotate(6deg); }
+  }
+  /* 连戳升级：转 */
+  .spin { animation: spin 0.5s ease !important; }
+  @keyframes spin {
+    0% { transform: rotate(0deg) scale(1); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+  /* 生气：鼓起来变红 */
+  .angry { animation: angry 0.5s ease !important; }
+  @keyframes angry {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.25); }
+    100% { transform: scale(1.15); }
+  }
+  .angryFilter { filter: sepia(1) hue-rotate(-50deg) saturate(6) brightness(0.9); }
+  /* 生气气泡 */
+  #bubble {
+    position:absolute;
+    top:-30px; left:50%;
+    transform:translateX(-50%);
+    background:#ff6b6b;
+    color:#fff;
+    font-size:16px;
+    font-weight:bold;
+    padding:4px 10px;
+    border-radius:12px;
+    white-space:nowrap;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.2s;
+    font-family:sans-serif;
+  }
+  #bubble.show { opacity:1; }
   /* 双击反应：转圈+放大 */
   .doubleTap { animation: doubleTap 0.8s ease !important; }
   @keyframes doubleTap {
@@ -48,37 +89,128 @@
     0% { transform: scale(1); opacity:1; }
     100% { transform: scale(0); opacity:0; }
   }
+  /* 甩动：甩出去（飞+落地弹跳） */
+  .fling { animation: fling 0.8s cubic-bezier(.3,.7,.4,1) forwards !important; }
+  @keyframes fling {
+    0% { transform: translate(0,0) scale(1) rotate(0); }
+    40% { transform: translate(var(--fx), var(--fy)) scale(0.9) rotate(var(--fr)); }
+    55% { transform: translate(var(--fx), calc(var(--fy) + 12px)) scale(0.85) rotate(var(--fr)); }
+    70% { transform: translate(var(--fx), var(--fy)) scale(0.9) rotate(var(--fr)); }
+    85% { transform: translate(var(--fx), calc(var(--fy) + 8px)) scale(0.88) rotate(var(--fr)); }
+    100% { transform: translate(var(--fx), var(--fy)) scale(0.9) rotate(var(--fr)); }
+  }
+  /* 甩动：扭着游回来（S形） */
+  .swim { animation: swim 1.6s ease-in-out forwards !important; }
+  @keyframes swim {
+    0% { transform: translate(var(--fx), var(--fy)) scale(0.9) rotate(var(--fr)); }
+    15% { transform: translate(calc(var(--fx)*0.7), calc(var(--fy)*0.7 - 10px)) scale(0.92) rotate(calc(var(--fr) - 15deg)); }
+    30% { transform: translate(calc(var(--fx)*0.4), calc(var(--fy)*0.4 + 10px)) scale(0.94) rotate(calc(var(--fr) + 15deg)); }
+    45% { transform: translate(calc(var(--fx)*0.15), calc(var(--fy)*0.15 - 10px)) scale(0.96) rotate(calc(var(--fr) - 10deg)); }
+    60% { transform: translate(0, 8px) scale(0.98) rotate(10deg); }
+    75% { transform: translate(0, -6px) scale(1) rotate(-8deg); }
+    90% { transform: translate(0, 3px) scale(1) rotate(5deg); }
+    100% { transform: translate(0,0) scale(1) rotate(0); }
+  }
 </style>
 </head>
 <body>
 <div id="pet">
   <img id="petImg" src="whale.svg" alt="pet">
+  <div id="bubble">哼！</div>
 </div>
 <script>
   var img = document.getElementById('petImg');
+  var bubble = document.getElementById('bubble');
+
   // 清掉所有动画类
   function clearAnim() {
-    img.classList.remove('react', 'doubleTap', 'hide');
+    img.classList.remove('react', 'shake', 'spin', 'angry', 'doubleTap', 'hide', 'fling', 'swim', 'angryFilter');
     void img.offsetWidth;
   }
-  // 点击随机反应
+
+  // ---- 连戳递进（生气） ----
+  var tapCount = 0;
+  var lastTapTime = 0;
+  var angryTimer = null;
+
+  // 单击反应（含连戳升级）
   window.petReact = function() {
+    var now = Date.now();
+    if (now - lastTapTime < 800) {
+      tapCount++;
+    } else {
+      tapCount = 1;
+    }
+    lastTapTime = now;
+
     clearAnim();
-    img.classList.add('react');
+    img.classList.remove('angryFilter');
+    bubble.classList.remove('show');
+
+    if (tapCount >= 6) {
+      // 生气：鼓起来变红 + 气泡
+      img.classList.add('angry', 'angryFilter');
+      bubble.classList.add('show');
+      if (angryTimer) clearTimeout(angryTimer);
+      angryTimer = setTimeout(function() {
+        img.classList.remove('angry', 'angryFilter');
+        bubble.classList.remove('show');
+        tapCount = 0;
+      }, 3000);
+    } else if (tapCount >= 5) {
+      img.classList.add('spin');
+    } else if (tapCount >= 3) {
+      img.classList.add('shake');
+    } else {
+      img.classList.add('react');
+    }
   };
+
   // 双击特殊动画
   window.petDoubleTap = function() {
     clearAnim();
+    img.classList.remove('angryFilter');
+    bubble.classList.remove('show');
     img.classList.add('doubleTap');
   };
+
   // 长按隐藏
   window.petHide = function() {
     clearAnim();
+    img.classList.remove('angryFilter');
+    bubble.classList.remove('show');
     img.classList.add('hide');
-    // 隐藏后2秒恢复
     setTimeout(function() {
       img.classList.remove('hide');
     }, 2000);
+  };
+
+  // ---- 甩动（Fling） ----
+  window.petFling = function(dx, dy) {
+    clearAnim();
+    img.classList.remove('angryFilter');
+    bubble.classList.remove('show');
+    // 甩出去的距离（限制在窗口内）
+    var fx = Math.max(-80, Math.min(80, dx));
+    var fy = Math.max(-80, Math.min(80, dy));
+    // 甩的方向决定旋转
+    var fr = dx > 0 ? 40 : -40;
+    img.style.setProperty('--fx', fx + 'px');
+    img.style.setProperty('--fy', fy + 'px');
+    img.style.setProperty('--fr', fr + 'deg');
+    // 先甩出去，落地后游回来
+    img.classList.add('fling');
+    setTimeout(function() {
+      img.classList.remove('fling');
+      void img.offsetWidth;
+      img.classList.add('swim');
+      setTimeout(function() {
+        img.classList.remove('swim');
+        img.style.removeProperty('--fx');
+        img.style.removeProperty('--fy');
+        img.style.removeProperty('--fr');
+      }, 1600);
+    }, 800);
   };
 </script>
 </body>
