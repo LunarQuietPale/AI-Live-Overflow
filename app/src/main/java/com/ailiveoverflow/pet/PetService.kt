@@ -12,6 +12,12 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.os.BatteryManager
+import android.os.FileObserver
+import android.os.Environment
+import java.io.File
 import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
@@ -46,6 +52,15 @@ class PetService : Service() {
         webView.evaluateJavascript("window.petHide();", null)
     }
 
+    // ---- 感知系统 ----
+    private var batteryReceiver: BroadcastReceiver? = null
+    private var screenshotObserver: FileObserver? = null
+    private var lastScreenshotTime = 0L
+    private var lastBatteryPct = -1
+    private var lastChargeState = -1  // -1未知 0未充电 1充电
+    private var lastTimeGreeting = -1  // 记录上次打招呼的时段，避免重复
+    private val senseHandler = Handler(Looper.getMainLooper())
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -58,6 +73,80 @@ class PetService : Service() {
             startForeground(1, buildNotification())
         }
         showPetWindow()
+        setupSensing()
+    }
+
+    // ---- 感知系统初始化 ----
+    private fun setupSensing() {
+        // 1. 充电/低电量检测
+        batteryReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                handleBattery(intent)
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_BATTERY_CHANGED)
+            addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_POWER_DISCONNECTED)
+        }
+        registerReceiver(batteryReceiver, filter)
+        // 2. 时段感知（启动时打招呼一次）
+        checkTimeGreeting()
+        // 3. 截图检测
+        setupScreenshotObserver()
+    }
+
+    // 充电/低电量处理
+    private fun handleBattery(intent: Intent) {
+        val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
+        val pct = if (level >= 0 && scale > 0) level * 100 / scale else -1
+        val charging = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+        // 充电状态变化
+        if (charging && lastChargeState != 1) {
+            lastChargeState = 1
+            webView.evaluateJavascript("window.petSense('charge');", null)
+        } else if (!charging && lastChargeState == 1) {
+            lastChargeState = 0
+        }
+        // 低电量提醒（低于20%且未充电，只提醒一次）
+        if (pct > 0 && pct <= 20 && !charging && lastBatteryPct != pct) {
+            webView.evaluateJavascript("window.petSense('lowbattery');", null)
+        }
+        lastBatteryPct = pct
+    }
+
+    // 时段感知：启动时打招呼
+    private fun checkTimeGreeting() {
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        if (hour != lastTimeGreeting) {
+            lastTimeGreeting = hour
+            webView.evaluateJavascript("window.petSense('time', $hour);", null)
+        }
+    }
+
+    // 截图检测：监听截图目录
+    private fun setupScreenshotObserver() {
+        try {
+            val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+            val screenshots = File(dir, "Screenshots")
+            if (!screenshots.exists()) screenshots.mkdirs()
+            screenshotObserver = object : FileObserver(screenshots.absolutePath, FileObserver.CLOSE_WRITE) {
+                override fun onEvent(event: Int, path: String?) {
+                    if (path != null && path.endsWith(".png") || path != null && path.endsWith(".jpg")) {
+                        val now = System.currentTimeMillis()
+                        // 防抖：2秒内只触发一次
+                        if (now - lastScreenshotTime > 2000) {
+                            lastScreenshotTime = now
+                            webView.evaluateJavascript("window.petSense('screenshot');", null)
+                        }
+                    }
+                }
+            }
+            screenshotObserver?.startWatching()
+        } catch (e: Exception) {
+            // 目录不可用就跳过
+        }
     }
 
     private fun showPetWindow() {
