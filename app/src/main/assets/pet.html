@@ -170,6 +170,34 @@
   var animLock = false;   // 动画锁：动画播放期间只计数不升级
   var pendingLevel = 0;   // 动画锁期间累计的升级需求
 
+  // ---- 表达系统：自言自语 ----
+  var idleLines = [
+    '今天也要元气满满~',
+    '主人怎么还不理我呀',
+    '我游啊游~',
+    '好想出去玩~',
+    '今天天气不错呢',
+    '主人加油！',
+    '咕噜咕噜~',
+    '我在发呆呢',
+    '要不要摸摸我~',
+    '好安静呀'
+  ];
+  function startIdleChatter() {
+    function schedule() {
+      if (isAngry) { setTimeout(schedule, 5000); return; }
+      var delay = 30000 + Math.random() * 60000;  // 30-90秒随机
+      setTimeout(function() {
+        if (!isAngry) {
+          var line = idleLines[Math.floor(Math.random() * idleLines.length)];
+          showBubble(line);
+        }
+        schedule();
+      }, delay);
+    }
+    schedule();
+  }
+
   // 统一连戳计数入口（Kotlin每次点击都调这里）
   window.petTap = function() {
     var now = Date.now();
@@ -366,6 +394,9 @@
         break;
     }
   };
+
+  // 启动表达系统：自言自语
+  startIdleChatter();
 </script>
 </body>
 </html>
