@@ -3,6 +3,8 @@ package com.ailiveoverflow.pet
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import androidx.core.app.NotificationManagerCompat
+import kotlin.random.Random
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
@@ -69,6 +71,14 @@ class PetService : Service() {
     private var bubbleParams: WindowManager.LayoutParams? = null
     private val bubbleHandler = Handler(Looper.getMainLooper())
     private val bubbleHideRunnable = Runnable { hideBubbleWindow() }
+    // ---- 表达系统：通知碎碎念 ----
+    private val notifyHandler = Handler(Looper.getMainLooper())
+    private val notifyRunnable = object : Runnable {
+        override fun run() {
+            sendChatterNotification()
+            notifyHandler.postDelayed(this, 5 * 60 * 1000 + (Math.random() * 5 * 60 * 1000).toLong())
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -83,6 +93,8 @@ class PetService : Service() {
         }
         showPetWindow()
         setupSensing()
+        // 启动表达系统：通知碎碎念（5-10分钟一条）
+        notifyHandler.postDelayed(notifyRunnable, 5 * 60 * 1000)
     }
 
     // ---- 感知系统初始化 ----
@@ -240,6 +252,7 @@ class PetService : Service() {
     private fun showBubbleWindow(text: String) {
         if (!Settings.canDrawOverlays(this)) return
         bubbleHandler.removeCallbacks(bubbleHideRunnable)
+        notifyHandler.removeCallbacks(notifyRunnable)
         if (bubbleView == null) {
             val tv = android.widget.TextView(this)
             tv.setTextColor(0xFF7EC8E3.toInt())
@@ -395,9 +408,35 @@ class PetService : Service() {
             .build()
     }
 
+
+    private fun sendChatterNotification() {
+        val lines = arrayOf(
+            "主人，我在这里陪你哦~",
+            "该休息一下啦，别太累",
+            "我一直在看着你呢~",
+            "咕噜咕噜，想你了",
+            "记得喝水哦~",
+            "主人加油，我支持你！"
+        )
+        val text = lines[Random.nextInt(lines.size)]
+        val intent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = Notification.Builder(this, "pet_channel")
+            .setContentTitle("🐳 AI桌宠")
+            .setContentText(text)
+            .setSmallIcon(android.R.drawable.ic_menu_compass)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(this).notify(2, notification)
+    }
     override fun onDestroy() {
         super.onDestroy()
         bubbleHandler.removeCallbacks(bubbleHideRunnable)
+        notifyHandler.removeCallbacks(notifyRunnable)
         hideBubbleWindow()
         if (::petView.isInitialized) {
             windowManager.removeView(petView)
