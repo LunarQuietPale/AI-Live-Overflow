@@ -70,10 +70,13 @@ class PetService : Service() {
         webView = petView.findViewById(R.id.petWebView)
         setupWebView()
 
-        petView.setOnTouchListener { _, event ->
+        // WebView会默认消费触摸事件导致外层拖拽失效，这里统一拦截并转发给handleTouch
+        val touchListener = View.OnTouchListener { _, event ->
             handleTouch(event, layoutParams)
             true
         }
+        petView.setOnTouchListener(touchListener)
+        webView.setOnTouchListener(touchListener)
 
         windowManager.addView(petView, layoutParams)
     }
