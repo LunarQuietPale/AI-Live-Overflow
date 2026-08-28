@@ -15,6 +15,7 @@
   #pet {
     width:100%; height:100%;
     display:flex; align-items:center; justify-content:center;
+    position:relative;   /* 修复气泡定位：让#bubble相对#pet定位 */
   }
   #pet svg {
     width:100%; height:100%;
@@ -72,6 +73,7 @@
     pointer-events:none;
     transition:opacity 0.2s;
     font-family:sans-serif;
+    z-index:10;
   }
   #bubble.show { opacity:1; }
   /* 双击反应：转圈+放大 */
@@ -150,7 +152,7 @@
   var bubble = document.getElementById('bubble');
   // 清掉所有动画类
   function clearAnim() {
-    img.classList.remove('react', 'shake', 'spin', 'angry', 'doubleTap', 'hide', 'fling', 'swim', 'angryFilter');
+    img.classList.remove('react', 'shake', 'spin', 'angry', 'doubleTap', 'hide', 'fling', 'swim', 'happy', 'surprise', 'sleepy', 'angryFilter');
     void img.offsetWidth;
   }
 
@@ -200,6 +202,16 @@
         tapCount = 0;
         pendingLevel = 0;
       }, 3000);
+      // 兜底：防止angryTimer的setTimeout未执行导致isAngry卡死
+      setTimeout(function() {
+        if (isAngry) {
+          img.classList.remove('angry', 'angryFilter');
+          bubble.classList.remove('show');
+          isAngry = false;
+          tapCount = 0;
+          pendingLevel = 0;
+        }
+      }, 3500);
       return;
     }
     var level = tapCount;
@@ -226,6 +238,18 @@
         pendingLevel = 0;
       }
     }, animMs);
+    // 兜底：防止animLock卡死（动画锁最多1.5秒必释放）
+    setTimeout(function() {
+      if (animLock) {
+        animLock = false;
+        if (pendingLevel > 0) {
+          var p = pendingLevel;
+          pendingLevel = 0;
+          tapCount = p;
+          doUpgrade();
+        }
+      }
+    }, 1500);
   }
 
   // 单击反应（走petTap统一计数升级，不再单独处理）
