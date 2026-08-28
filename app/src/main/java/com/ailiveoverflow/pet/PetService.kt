@@ -10,7 +10,9 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -31,6 +33,17 @@ class PetService : Service() {
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var isDragging = false
+
+    // 双击检测
+    private var lastTapTime = 0L
+    private var pendingSingleTap = false
+    // 长按检测
+    private val longPressHandler = Handler(Looper.getMainLooper())
+    private var longPressTriggered = false
+    private val longPressRunnable = Runnable {
+        longPressTriggered = true
+        webView.evaluateJavascript("window.petHide();", null)
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -100,21 +113,44 @@ class PetService : Service() {
                 initialTouchX = event.rawX
                 initialTouchY = event.rawY
                 isDragging = false
+                longPressTriggered = false
+                // 启动长按检测（800ms后触发）
+                longPressHandler.postDelayed(longPressRunnable, 800)
             }
             MotionEvent.ACTION_MOVE -> {
                 val dx = (event.rawX - initialTouchX).toInt()
                 val dy = (event.rawY - initialTouchY).toInt()
                 if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
                     isDragging = true
+                    // 开始拖拽则取消长按
+                    longPressHandler.removeCallbacks(longPressRunnable)
                     params.x = initialX + dx
                     params.y = initialY + dy
                     windowManager.updateViewLayout(petView, params)
                 }
             }
             MotionEvent.ACTION_UP -> {
-                if (!isDragging) {
-                    // 单击 -> 触发随机反应
-                    webView.evaluateJavascript("window.petReact();", null)
+                longPressHandler.removeCallbacks(longPressRunnable)
+                if (isDragging || longPressTriggered) {
+                    // 拖拽或长按过，不触发点击
+                    return true
+                }
+                val now = System.currentTimeMillis()
+                if (now - lastTapTime < 300) {
+                    // 双击 -> 特殊动画
+                    lastTapTime = 0
+                    pendingSingleTap = false
+                    webView.evaluateJavascript("window.petDoubleTap();", null)
+                } else {
+                    // 可能是单击，延迟300ms确认不是双击
+                    lastTapTime = now
+                    pendingSingleTap = true
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        if (pendingSingleTap) {
+                            pendingSingleTap = false
+                            webView.evaluateJavascript("window.petReact();", null)
+                        }
+                    }, 300)
                 }
             }
         }
