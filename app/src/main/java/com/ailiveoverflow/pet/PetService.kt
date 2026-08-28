@@ -50,8 +50,8 @@ class PetService : Service() {
         if (!Settings.canDrawOverlays(this)) return
 
         val layoutParams = WindowManager.LayoutParams(
-            260,
-            260,
+            280,
+            280,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
