@@ -246,6 +246,7 @@ class PetService : Service() {
             tv.textSize = 13f
             tv.setTypeface(null, android.graphics.Typeface.BOLD)
             tv.setPadding(28, 14, 28, 14)
+            tv.setSingleLine(true)
             val radius = 40f
             val bg = android.graphics.drawable.GradientDrawable()
             bg.cornerRadius = radius
@@ -281,7 +282,7 @@ class PetService : Service() {
         if (!::petView.isInitialized) return
         val lp = petView.layoutParams as? WindowManager.LayoutParams ?: return
         bp.x = lp.x
-        bp.y = lp.y + 280
+        bp.y = lp.y - 70
         bubbleView?.let { windowManager.updateViewLayout(it, bp) }
     }
     private fun hideBubbleWindow() {
@@ -318,6 +319,13 @@ class PetService : Service() {
                     params.x = initialX + dx
                     params.y = initialY + dy
                     windowManager.updateViewLayout(petView, params)
+                    // 同步移动气泡
+                    bubbleView?.let {
+                        val bp = bubbleParams ?: return@let
+                        bp.x = params.x
+                        bp.y = params.y - 70
+                        windowManager.updateViewLayout(it, bp)
+                    }
                 }
             }
             MotionEvent.ACTION_UP -> {
