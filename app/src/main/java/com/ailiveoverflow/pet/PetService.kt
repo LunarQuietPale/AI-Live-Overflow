@@ -80,7 +80,6 @@ class PetService : Service() {
         settings.setSupportZoom(false)
         settings.loadWithOverviewMode = true
         settings.useWideViewPort = true
-        settings.backgroundAlpha = 0
         webView.setBackgroundColor(0x00000000)
         webView.loadUrl("file:///android_asset/pet.html")
     }
