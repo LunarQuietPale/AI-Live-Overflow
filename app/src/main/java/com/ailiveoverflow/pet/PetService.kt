@@ -122,7 +122,9 @@ class PetService : Service() {
             MotionEvent.ACTION_MOVE -> {
                 val dx = (event.rawX - initialTouchX).toInt()
                 val dy = (event.rawY - initialTouchY).toInt()
-                if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                // 只有耗时超过250ms的移动才算拖拽，快速甩动不算（留给fling）
+                val dur = System.currentTimeMillis() - downTime
+                if ((Math.abs(dx) > 10 || Math.abs(dy) > 10) && dur > 250) {
                     isDragging = true
                     // 开始拖拽则取消长按
                     longPressHandler.removeCallbacks(longPressRunnable)
@@ -133,11 +135,7 @@ class PetService : Service() {
             }
             MotionEvent.ACTION_UP -> {
                 longPressHandler.removeCallbacks(longPressRunnable)
-                if (isDragging || longPressTriggered) {
-                    // 拖拽或长按过，不触发点击
-                    return true
-                }
-                // 甩动检测：快速滑动（位移>50px且耗时<250ms）触发fling
+                // 甩动检测放最前：快速滑动（位移>50px且耗时<250ms）触发fling
                 val upX = event.rawX
                 val upY = event.rawY
                 val dx = (upX - initialTouchX).toInt()
@@ -146,6 +144,10 @@ class PetService : Service() {
                 val dur = System.currentTimeMillis() - downTime
                 if (dist > 50 && dur < 250) {
                     webView.evaluateJavascript("window.petFling($dx, $dy);", null)
+                    return true
+                }
+                if (isDragging || longPressTriggered) {
+                    // 拖拽或长按过，不触发点击
                     return true
                 }
                 val now = System.currentTimeMillis()
