@@ -60,21 +60,24 @@
   /* 生气气泡 */
   #bubble {
     position:absolute;
-    top:auto; bottom:8px; left:50%;
+    top:auto; bottom:6px; left:50%;
     transform:translateX(-50%);
-    background:rgba(0,0,0,0.65);
-    color:#fff;
-    font-size:15px;
+    background:rgba(255,255,255,0.85);
+    color:#7ec8e3;
+    font-size:13px;
     font-weight:bold;
-    padding:5px 12px;
-    border-radius:14px;
+    padding:3px 8px;
+    border-radius:10px;
     white-space:nowrap;
+    max-width:90%;
+    overflow:hidden;
+    text-overflow:ellipsis;
     opacity:0;
     pointer-events:none;
     transition:opacity 0.2s;
     font-family:sans-serif;
     z-index:10;
-    box-shadow:0 2px 8px rgba(0,0,0,0.3);
+    box-shadow:0 1px 4px rgba(0,0,0,0.15);
   }
   #bubble.show { opacity:1; }
   /* 双击反应：转圈+放大 */
@@ -194,6 +197,7 @@
       // 生气：鼓起来变红 + 气泡（霸屏）
       isAngry = true;
       img.classList.add('angry', 'angryFilter');
+      bubble.textContent = '哼！';
       bubble.classList.add('show');
       if (angryTimer) clearTimeout(angryTimer);
       angryTimer = setTimeout(function() {
