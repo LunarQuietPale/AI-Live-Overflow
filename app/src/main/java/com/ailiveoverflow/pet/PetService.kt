@@ -90,8 +90,7 @@ class PetService : Service() {
             addAction(Intent.ACTION_POWER_DISCONNECTED)
         }
         registerReceiver(batteryReceiver, filter)
-        // 2. 时段感知（启动时打招呼一次）
-        checkTimeGreeting()
+        // 2. 时段感知（启动时打招呼一次，等页面加载完再调，见 onPageFinished）
         // 3. 截图检测
         setupScreenshotObserver()
     }
@@ -192,6 +191,13 @@ class PetService : Service() {
         settings.loadWithOverviewMode = true
         settings.useWideViewPort = true
         webView.setBackgroundColor(0x00000000)
+        webView.webViewClient = object : android.webkit.WebViewClient() {
+            override fun onPageFinished(view: android.webkit.WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                // 页面加载完再打招呼，避免 petSense 未定义报错
+                checkTimeGreeting()
+            }
+        }
         webView.loadUrl("file:///android_asset/pet.html")
     }
 
