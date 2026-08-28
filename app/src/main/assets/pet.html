@@ -111,6 +111,33 @@
     90% { transform: translate(0, 3px) scale(1) rotate(5deg); }
     100% { transform: translate(0,0) scale(1) rotate(0); }
   }
+  /* 感知：开心跳 */
+  .happy { animation: happy 0.8s ease !important; }
+  @keyframes happy {
+    0% { transform: translateY(0) scale(1); }
+    20% { transform: translateY(-18px) scale(1.15) rotate(-8deg); }
+    40% { transform: translateY(-10px) scale(1.1) rotate(8deg); }
+    60% { transform: translateY(-14px) scale(1.12) rotate(-5deg); }
+    80% { transform: translateY(-5px) scale(1.05) rotate(3deg); }
+    100% { transform: translateY(0) scale(1); }
+  }
+  /* 感知：惊讶 */
+  .surprise { animation: surprise 0.5s ease !important; }
+  @keyframes surprise {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.3); }
+    60% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+  }
+  /* 感知：困倦（打哈欠） */
+  .sleepy { animation: sleepy 1.2s ease !important; }
+  @keyframes sleepy {
+    0% { transform: translateY(0) scale(1); }
+    25% { transform: translateY(-6px) scale(1.05) rotate(-4deg); }
+    50% { transform: translateY(0) scale(1); }
+    75% { transform: translateY(-6px) scale(1.05) rotate(4deg); }
+    100% { transform: translateY(0) scale(1); }
+  }
 </style>
 </head>
 <body>
@@ -253,6 +280,64 @@
         img.style.removeProperty('--fr');
       }, 1600);
     }, 800);
+  };
+
+  // ---- 感知系统（前台App/截图/充电/时段） ----
+  var senseTimer = null;
+  // 显示气泡文字
+  function showBubble(text, ms) {
+    bubble.textContent = text;
+    bubble.classList.add('show');
+    if (senseTimer) clearTimeout(senseTimer);
+    senseTimer = setTimeout(function() {
+      bubble.classList.remove('show');
+    }, ms || 2500);
+  }
+  // 感知统一入口
+  window.petSense = function(type, data) {
+    if (isAngry) return;  // 生气霸屏，感知也先让路
+    clearAnim();
+    img.classList.remove('angryFilter');
+    switch (type) {
+      case 'charge':
+        // 充电：开心跳
+        img.classList.add('happy');
+        showBubble('充电中~ 好开心！');
+        break;
+      case 'lowbattery':
+        // 低电量：惊讶
+        img.classList.add('surprise');
+        showBubble('快没电啦！快充我！');
+        break;
+      case 'screenshot':
+        // 截图：惊讶
+        img.classList.add('surprise');
+        showBubble('咔嚓！拍到我啦~');
+        break;
+      case 'time':
+        // 时段感知
+        var h = data;
+        if (h >= 5 && h < 9) {
+          img.classList.add('happy');
+          showBubble('早安~ 新的一天！');
+        } else if (h >= 9 && h < 12) {
+          img.classList.add('happy');
+          showBubble('上午好呀~');
+        } else if (h >= 12 && h < 14) {
+          img.classList.add('happy');
+          showBubble('午安~ 该吃饭啦');
+        } else if (h >= 14 && h < 18) {
+          img.classList.add('happy');
+          showBubble('下午好~ 加油！');
+        } else if (h >= 18 && h < 22) {
+          img.classList.add('happy');
+          showBubble('晚上好~');
+        } else if (h >= 22 || h < 5) {
+          img.classList.add('sleepy');
+          showBubble('夜深了，该睡啦~');
+        }
+        break;
+    }
   };
 </script>
 </body>
