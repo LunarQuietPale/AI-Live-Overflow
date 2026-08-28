@@ -20,6 +20,9 @@ import android.os.Environment
 import java.io.File
 import android.os.Looper
 import android.provider.Settings
+import android.database.ContentObserver
+import android.net.Uri
+import android.provider.MediaStore
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -59,6 +62,7 @@ class PetService : Service() {
     private var lastBatteryPct = -1
     private var lastChargeState = -1  // -1未知 0未充电 1充电
     private var lastTimeGreeting = -1  // 记录上次打招呼的时段，避免重复
+    private var screenshotObserver2: ContentObserver? = null
     private val senseHandler = Handler(Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -124,27 +128,44 @@ class PetService : Service() {
         }
     }
 
-    // 截图检测：监听截图目录
+    // 截图检测：ContentObserver监听MediaStore（更可靠，覆盖所有截图路径）
     private fun setupScreenshotObserver() {
         try {
+            // 方式1：FileObserver监听Pictures/Screenshots目录
             val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
             val screenshots = File(dir, "Screenshots")
             if (!screenshots.exists()) screenshots.mkdirs()
             screenshotObserver = object : FileObserver(screenshots.absolutePath, FileObserver.CLOSE_WRITE) {
                 override fun onEvent(event: Int, path: String?) {
-                    if (path != null && path.endsWith(".png") || path != null && path.endsWith(".jpg")) {
-                        val now = System.currentTimeMillis()
-                        // 防抖：2秒内只触发一次
-                        if (now - lastScreenshotTime > 2000) {
-                            lastScreenshotTime = now
-                            webView.evaluateJavascript("window.petSense('screenshot');", null)
-                        }
+                    if (path != null && (path.endsWith(".png") || path.endsWith(".jpg"))) {
+                        triggerScreenshot()
                     }
                 }
             }
             screenshotObserver?.startWatching()
         } catch (e: Exception) {
             // 目录不可用就跳过
+        }
+        // 方式2：ContentObserver监听MediaStore图片变化（双保险，覆盖DCIM等路径）
+        try {
+            val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            screenshotObserver2 = object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean) {
+                    super.onChange(selfChange)
+                    triggerScreenshot()
+                }
+            }
+            contentResolver.registerContentObserver(uri, true, screenshotObserver2!!)
+        } catch (e: Exception) {
+            // 忽略
+        }
+    }
+    // 截图触发（带防抖）
+    private fun triggerScreenshot() {
+        val now = System.currentTimeMillis()
+        if (now - lastScreenshotTime > 2000) {
+            lastScreenshotTime = now
+            webView.evaluateJavascript("window.petSense('screenshot');", null)
         }
     }
 
