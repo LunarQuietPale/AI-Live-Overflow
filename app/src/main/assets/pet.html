@@ -199,8 +199,7 @@
       // 生气：鼓起来变红 + 气泡（霸屏）
       isAngry = true;
       img.classList.add('angry', 'angryFilter');
-      bubble.textContent = '哼！';
-      bubble.classList.add('show');
+      showBubble('哼！');
       if (angryTimer) clearTimeout(angryTimer);
       angryTimer = setTimeout(function() {
         img.classList.remove('angry', 'angryFilter');
@@ -315,14 +314,11 @@
 
   // ---- 感知系统（前台App/截图/充电/时段） ----
   var senseTimer = null;
-  // 显示气泡文字
+  // 显示气泡文字（通过独立悬浮窗，不受浮窗尺寸限制）
   function showBubble(text, ms) {
-    bubble.textContent = text;
-    bubble.classList.add('show');
-    if (senseTimer) clearTimeout(senseTimer);
-    senseTimer = setTimeout(function() {
-      bubble.classList.remove('show');
-    }, ms || 2500);
+    if (window.Android && window.Android.showBubble) {
+      window.Android.showBubble(text);
+    }
   }
   // 感知统一入口
   window.petSense = function(type, data) {
