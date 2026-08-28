@@ -64,6 +64,11 @@ class PetService : Service() {
     private var lastTimeGreeting = -1  // 记录上次打招呼的时段，避免重复
     private var screenshotObserver2: ContentObserver? = null
     private val senseHandler = Handler(Looper.getMainLooper())
+    // ---- 独立气泡悬浮窗 ----
+    private var bubbleView: View? = null
+    private var bubbleParams: WindowManager.LayoutParams? = null
+    private val bubbleHandler = Handler(Looper.getMainLooper())
+    private val bubbleHideRunnable = Runnable { hideBubbleWindow() }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -212,6 +217,7 @@ class PetService : Service() {
         settings.loadWithOverviewMode = true
         settings.useWideViewPort = true
         webView.setBackgroundColor(0x00000000)
+        webView.addJavascriptInterface(BubbleBridge(), "Android")
         webView.webViewClient = object : android.webkit.WebViewClient() {
             override fun onPageFinished(view: android.webkit.WebView?, url: String?) {
                 super.onPageFinished(view, url)
@@ -222,6 +228,71 @@ class PetService : Service() {
         webView.loadUrl("file:///android_asset/pet.html")
     }
 
+    // ---- 独立气泡悬浮窗 ----
+    private inner class BubbleBridge {
+        @android.webkit.JavascriptInterface
+        fun showBubble(text: String) {
+            bubbleHandler.post {
+                showBubbleWindow(text)
+            }
+        }
+    }
+    private fun showBubbleWindow(text: String) {
+        if (!Settings.canDrawOverlays(this)) return
+        bubbleHandler.removeCallbacks(bubbleHideRunnable)
+        if (bubbleView == null) {
+            val tv = android.widget.TextView(this)
+            tv.setTextColor(0xFF7EC8E3.toInt())
+            tv.textSize = 13f
+            tv.setTypeface(null, android.graphics.Typeface.BOLD)
+            tv.setPadding(28, 14, 28, 14)
+            val radius = 40f
+            val bg = android.graphics.drawable.GradientDrawable()
+            bg.cornerRadius = radius
+            bg.setColor(0xD9FFFFFF.toInt())
+            tv.background = bg
+            tv.text = text
+            bubbleView = tv
+            bubbleParams = WindowManager.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                else
+                    WindowManager.LayoutParams.TYPE_PHONE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                x = 100
+                y = 300
+            }
+            windowManager.addView(tv, bubbleParams)
+        } else {
+            (bubbleView as android.widget.TextView).text = text
+        }
+        positionBubbleBelowPet()
+        bubbleHandler.postDelayed(bubbleHideRunnable, 2500)
+    }
+    private fun positionBubbleBelowPet() {
+        val bp = bubbleParams ?: return
+        if (!::petView.isInitialized) return
+        val lp = petView.layoutParams as? WindowManager.LayoutParams ?: return
+        bp.x = lp.x
+        bp.y = lp.y + 280
+        bubbleView?.let { windowManager.updateViewLayout(it, bp) }
+    }
+    private fun hideBubbleWindow() {
+        bubbleView?.let {
+            try {
+                windowManager.removeView(it)
+            } catch (e: Exception) {
+            }
+            bubbleView = null
+        }
+    }
     private fun handleTouch(event: MotionEvent, params: WindowManager.LayoutParams): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
@@ -318,6 +389,8 @@ class PetService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        bubbleHandler.removeCallbacks(bubbleHideRunnable)
+        hideBubbleWindow()
         if (::petView.isInitialized) {
             windowManager.removeView(petView)
         }
