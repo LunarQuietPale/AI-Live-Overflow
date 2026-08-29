@@ -485,10 +485,10 @@
     }
     return false;
   }
-  // 睡眠检测：每30秒检查，超过30分钟无互动进入睡眠
+  // 睡眠检测：每30秒检查，超过15分钟无互动进入睡眠
   function startSleepCheck() {
     function check() {
-      if (!isAngry && !isSleeping && Date.now() - lastInteractTime > 30 * 60 * 1000) {
+      if (!isAngry && !isSleeping && Date.now() - lastInteractTime > 15 * 60 * 1000) {
         isSleeping = true;
         clearAnim();
         img.classList.remove('angryFilter');
