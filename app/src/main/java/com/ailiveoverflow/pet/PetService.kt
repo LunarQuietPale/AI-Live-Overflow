@@ -85,6 +85,14 @@ class PetService : Service() {
         }
     }
 
+    // ---- 喝水提醒（每2小时） ----
+    private val drinkHandler = Handler(Looper.getMainLooper())
+    private val drinkRunnable = object : Runnable {
+        override fun run() {
+            sendDrinkReminder()
+            drinkHandler.postDelayed(this, 2 * 60 * 60 * 1000)
+        }
+    }
     // ---- 情绪引擎：Supabase轮询 ----
     private val supabaseUrl = "https://gljhdigxpvldpnmqougr.supabase.co"
     private val supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsamhkaWd4cHZsZHBubXFvdWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5OTAyMjQsImV4cCI6MjEwMjU2NjIyNH0.6k6g9N-TOh0p6dhA9Bw1wElys5HbEQ5dLsOdUehLtm8"
@@ -113,6 +121,8 @@ class PetService : Service() {
         notifyHandler.postDelayed(notifyRunnable, 5 * 60 * 1000)
         // 启动情绪引擎：轮询Supabase（15-30秒一次）
         emotionHandler.postDelayed(emotionRunnable, 15000)
+        // 启动喝水提醒（每2小时）
+        drinkHandler.postDelayed(drinkRunnable, 2 * 60 * 60 * 1000)
     }
 
     // ---- 感知系统初始化 ----
@@ -451,6 +461,34 @@ class PetService : Service() {
             .build()
         NotificationManagerCompat.from(this).notify(2, notification)
     }
+    // ---- 喝水提醒（每2小时，气泡+通知） ----
+    private fun sendDrinkReminder() {
+        val lines = arrayOf(
+            "主人，该喝水啦~ 记得补充水分哦",
+            "咕噜咕噜... 主人喝口水吧",
+            "两小时到啦，主人喝点水休息下~",
+            "我帮你盯着呢，该喝水啦！"
+        )
+        val text = lines[Random.nextInt(lines.size)]
+        // 气泡提醒
+        bubbleHandler.post {
+            showBubbleWindow(text)
+        }
+        // 通知提醒
+        val intent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = Notification.Builder(this, "pet_channel")
+            .setContentTitle("🐳 喝水提醒")
+            .setContentText(text)
+            .setSmallIcon(android.R.drawable.ic_menu_compass)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(this).notify(3, notification)
+    }
     // ---- 情绪引擎：轮询Supabase读取情绪值 ----
     private fun pollEmotion() {
         Thread {
@@ -497,6 +535,7 @@ class PetService : Service() {
         bubbleHandler.removeCallbacks(bubbleHideRunnable)
         notifyHandler.removeCallbacks(notifyRunnable)
         emotionHandler.removeCallbacks(emotionRunnable)
+        drinkHandler.removeCallbacks(drinkRunnable)
         hideBubbleWindow()
         if (::petView.isInitialized) {
             windowManager.removeView(petView)

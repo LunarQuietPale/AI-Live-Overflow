@@ -146,6 +146,16 @@
     75% { transform: translateY(-6px) scale(1.05) rotate(4deg); }
     100% { transform: translateY(0) scale(1); }
   }
+  /* 唤醒过渡：伸懒腰（从睡眠切到任何状态先播这个） */
+  .wake { animation: wake 0.9s ease !important; }
+  @keyframes wake {
+    0% { transform: translateY(0) scale(1) rotate(0); }
+    20% { transform: translateY(-10px) scale(1.1) rotate(-10deg); }
+    40% { transform: translateY(-18px) scale(1.15) rotate(10deg); }
+    60% { transform: translateY(-12px) scale(1.12) rotate(-6deg); }
+    80% { transform: translateY(-6px) scale(1.06) rotate(4deg); }
+    100% { transform: translateY(0) scale(1) rotate(0); }
+  }
 </style>
 </head>
 <body>
@@ -158,7 +168,7 @@
   var bubble = document.getElementById('bubble');
   // 清掉所有动画类
   function clearAnim() {
-    img.classList.remove('react', 'shake', 'spin', 'angry', 'doubleTap', 'hide', 'fling', 'swim', 'happy', 'surprise', 'sleepy', 'angryFilter');
+    img.classList.remove('react', 'shake', 'spin', 'angry', 'doubleTap', 'hide', 'fling', 'swim', 'happy', 'surprise', 'sleepy', 'wake', 'angryFilter');
     void img.offsetWidth;
   }
 
@@ -200,6 +210,7 @@
 
   // 统一连戳计数入口（Kotlin每次点击都调这里）
   window.petTap = function() {
+    if (touch()) return;  // 睡眠唤醒：先播wake动画，本次点击只唤醒
     var now = Date.now();
     // 连戳判定窗口：1000ms（符合正常人连续戳的节奏）
     if (now - lastTapTime < 1000) {
@@ -295,6 +306,7 @@
   // 双击特殊动画
   window.petDoubleTap = function() {
     if (isAngry) return;  // 生气霸屏
+    if (touch()) return;  // 睡眠唤醒
     clearAnim();
     img.classList.remove('angryFilter');
     bubble.classList.remove('show');
@@ -303,6 +315,7 @@
   // 长按隐藏
   window.petHide = function() {
     if (isAngry) return;  // 生气霸屏
+    if (touch()) return;  // 睡眠唤醒
     clearAnim();
     img.classList.remove('angryFilter');
     bubble.classList.remove('show');
@@ -314,6 +327,7 @@
   // ---- 甩动（Fling） ----
   window.petFling = function(dx, dy) {
     if (isAngry) return;  // 生气霸屏
+    if (touch()) return;  // 睡眠唤醒
     clearAnim();
     img.classList.remove('angryFilter');
     bubble.classList.remove('show');
@@ -428,8 +442,80 @@
     }
   };
 
+  // ---- 睡眠检测 + 唤醒过渡 ----
+  var lastInteractTime = Date.now();  // 最后互动时间
+  var isSleeping = false;             // 是否睡眠
+  var sleepCheckTimer = null;
+  // 互动时更新最后互动时间，若在睡眠则先播唤醒动画
+  function touch() {
+    lastInteractTime = Date.now();
+    if (isSleeping) {
+      isSleeping = false;
+      clearAnim();
+      img.classList.remove('angryFilter');
+      bubble.classList.remove('show');
+      img.classList.add('wake');
+      showBubble('唔...我醒了~');
+      // 播完唤醒动画后再继续，这里直接返回，由调用方再触发实际反应
+      return true;  // 表示刚被唤醒
+    }
+    return false;
+  }
+  // 睡眠检测：每30秒检查，超过30分钟无互动进入睡眠
+  function startSleepCheck() {
+    function check() {
+      if (!isAngry && !isSleeping && Date.now() - lastInteractTime > 30 * 60 * 1000) {
+        isSleeping = true;
+        clearAnim();
+        img.classList.remove('angryFilter');
+        bubble.classList.remove('show');
+        img.classList.add('sleepy');
+        showBubble('Zzz...');
+      }
+      sleepCheckTimer = setTimeout(check, 30 * 1000);
+    }
+    check();
+  }
+  // ---- 20分钟定时行为 ----
+  function startTimedBehavior() {
+    function schedule() {
+      setTimeout(function() {
+        if (!isAngry && !isSleeping) {
+          // 30% 概率触发
+          if (Math.random() < 0.3) {
+            var h = new Date().getHours();
+            clearAnim();
+            img.classList.remove('angryFilter');
+            bubble.classList.remove('show');
+            if (h >= 22 || h < 5) {
+              img.classList.add('sleepy');
+              showBubble('夜深了，我有点困了~');
+            } else if (h >= 5 && h < 9) {
+              img.classList.add('happy');
+              showBubble('早起的鲸鱼有鱼吃~');
+            } else if (h >= 12 && h < 14) {
+              img.classList.add('happy');
+              showBubble('午休时间到，主人也歇会儿吧~');
+            } else {
+              var acts = ['happy','surprise','sleepy'];
+              var a = acts[Math.floor(Math.random()*acts.length)];
+              img.classList.add(a);
+              var msgs = {'happy':'嘿嘿，我心情不错~','surprise':'咦？刚想到主人~','sleepy':'有点犯困了...'};
+              showBubble(msgs[a]);
+            }
+          }
+        }
+        schedule();
+      }, 20 * 60 * 1000);
+    }
+    schedule();
+  }
   // 启动表达系统：自言自语
   startIdleChatter();
+  // 启动睡眠检测
+  startSleepCheck();
+  // 启动20分钟定时行为
+  startTimedBehavior();
 </script>
 </body>
 </html>
