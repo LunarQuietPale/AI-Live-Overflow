@@ -395,6 +395,39 @@
     }
   };
 
+  // 情绪引擎：Supabase轮询触发（由Kotlin侧调用）
+  window.petEmotion = function(emotion, intensity) {
+    if (isAngry) return;  // 生气霸屏优先
+    clearAnim();
+    img.classList.remove('angryFilter');
+    switch (emotion) {
+      case 'happy':
+        img.classList.add('happy');
+        showBubble('好开心呀~');
+        break;
+      case 'sad':
+        img.classList.add('sleepy');
+        showBubble('有点难过呢...');
+        break;
+      case 'angry':
+        img.classList.add('angry');
+        img.classList.add('angryFilter');
+        showBubble('哼！我不开心！');
+        break;
+      case 'tired':
+        img.classList.add('sleepy');
+        showBubble('好累呀...想睡觉');
+        break;
+      case 'excited':
+        img.classList.add('happy');
+        showBubble('哇！好兴奋！');
+        break;
+      default:  // neutral
+        showBubble('主人，我在呢~');
+        break;
+    }
+  };
+
   // 启动表达系统：自言自语
   startIdleChatter();
 </script>

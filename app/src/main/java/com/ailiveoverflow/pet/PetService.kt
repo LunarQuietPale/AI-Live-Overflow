@@ -5,6 +5,11 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import androidx.core.app.NotificationManagerCompat
 import kotlin.random.Random
+import java.net.HttpURLConnection
+import java.net.URL
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import org.json.JSONObject
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
@@ -80,6 +85,17 @@ class PetService : Service() {
         }
     }
 
+    // ---- 情绪引擎：Supabase轮询 ----
+    private val supabaseUrl = "https://gljhdigxpvldpnmqougr.supabase.co"
+    private val supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsamhkaWd4cHZsZHBubXFvdWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5OTAyMjQsImV4cCI6MjEwMjU2NjIyNH0.6k6g9N-TOh0p6dhA9Bw1wElys5HbEQ5dLsOdUehLtm8"
+    private val emotionHandler = Handler(Looper.getMainLooper())
+    private var lastEmotion = ""
+    private val emotionRunnable = object : Runnable {
+        override fun run() {
+            pollEmotion()
+            emotionHandler.postDelayed(this, 15000 + (Math.random() * 15000).toLong())
+        }
+    }
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -95,6 +111,8 @@ class PetService : Service() {
         setupSensing()
         // 启动表达系统：通知碎碎念（5-10分钟一条）
         notifyHandler.postDelayed(notifyRunnable, 5 * 60 * 1000)
+        // 启动情绪引擎：轮询Supabase（15-30秒一次）
+        emotionHandler.postDelayed(emotionRunnable, 15000)
     }
 
     // ---- 感知系统初始化 ----
@@ -433,10 +451,52 @@ class PetService : Service() {
             .build()
         NotificationManagerCompat.from(this).notify(2, notification)
     }
+    // ---- 情绪引擎：轮询Supabase读取情绪值 ----
+    private fun pollEmotion() {
+        Thread {
+            try {
+                val url = URL("$supabaseUrl/rest/v1/pet_emotion?select=emotion,intensity,message&order=updated_at.desc&limit=1")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.connectTimeout = 8000
+                conn.readTimeout = 8000
+                conn.setRequestProperty("apikey", supabaseKey)
+                conn.setRequestProperty("Authorization", "Bearer $supabaseKey")
+                conn.setRequestProperty("Accept", "application/json")
+                val code = conn.responseCode
+                if (code == 200) {
+                    val reader = BufferedReader(InputStreamReader(conn.inputStream))
+                    val sb = StringBuilder()
+                    var line: String?
+                    while (reader.readLine().also { line = it } != null) sb.append(line)
+                    reader.close()
+                    val body = sb.toString()
+                    val arr = org.json.JSONArray(body)
+                    if (arr.length() > 0) {
+                        val obj = arr.getJSONObject(0)
+                        val emotion = obj.optString("emotion", "neutral")
+                        val intensity = obj.optInt("intensity", 5)
+                        if (emotion != lastEmotion) {
+                            lastEmotion = emotion
+                            emotionHandler.post {
+                                if (::webView.isInitialized) {
+                                    webView.evaluateJavascript("window.petEmotion('$emotion', $intensity);", null)
+                                }
+                            }
+                        }
+                    }
+                }
+                conn.disconnect()
+            } catch (e: Exception) {
+                // 网络异常静默，下轮重试
+            }
+        }.start()
+    }
     override fun onDestroy() {
         super.onDestroy()
         bubbleHandler.removeCallbacks(bubbleHideRunnable)
         notifyHandler.removeCallbacks(notifyRunnable)
+        emotionHandler.removeCallbacks(emotionRunnable)
         hideBubbleWindow()
         if (::petView.isInitialized) {
             windowManager.removeView(petView)
