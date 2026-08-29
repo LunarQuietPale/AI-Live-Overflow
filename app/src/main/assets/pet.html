@@ -156,16 +156,38 @@
     80% { transform: translateY(-6px) scale(1.06) rotate(4deg); }
     100% { transform: translateY(0) scale(1) rotate(0); }
   }
+  /* 睡眠：头顶Zzz飘动 */
+  #zzz {
+    position:absolute;
+    top:-14px; left:50%;
+    transform:translateX(-50%);
+    font-size:16px;
+    font-weight:bold;
+    color:#7ec8e3;
+    text-shadow:0 0 4px rgba(126,200,227,0.6);
+    font-family:sans-serif;
+    opacity:0;
+    pointer-events:none;
+    z-index:20;
+  }
+  #zzz.show { animation: zzzFloat 2.2s ease-in-out infinite; opacity:1; }
+  @keyframes zzzFloat {
+    0% { transform: translate(-50%, 0) scale(0.8); opacity:0; }
+    20% { opacity:1; }
+    100% { transform: translate(calc(-50% + 14px), -26px) scale(1.3); opacity:0; }
+  }
 </style>
 </head>
 <body>
 <div id="pet">
   <img id="petImg" src="whale.svg" alt="pet">
+  <div id="zzz">Zzz</div>
   <div id="bubble">哼！</div>
 </div>
 <script>
   var img = document.getElementById('petImg');
   var bubble = document.getElementById('bubble');
+  var zzz = document.getElementById('zzz');
   // 清掉所有动画类
   function clearAnim() {
     img.classList.remove('react', 'shake', 'spin', 'angry', 'doubleTap', 'hide', 'fling', 'swim', 'happy', 'surprise', 'sleepy', 'wake', 'angryFilter');
@@ -454,6 +476,8 @@
       clearAnim();
       img.classList.remove('angryFilter');
       bubble.classList.remove('show');
+      zzz.classList.remove('show');
+      img.src = 'whale.svg';  // 唤醒切回睁眼
       img.classList.add('wake');
       showBubble('唔...我醒了~');
       // 播完唤醒动画后再继续，这里直接返回，由调用方再触发实际反应
@@ -469,7 +493,9 @@
         clearAnim();
         img.classList.remove('angryFilter');
         bubble.classList.remove('show');
+        img.src = 'whale_sleep.svg';  // 睡眠切换闭眼
         img.classList.add('sleepy');
+        zzz.classList.add('show');     // 头顶Zzz飘动
         showBubble('Zzz...');
       }
       sleepCheckTimer = setTimeout(check, 30 * 1000);
