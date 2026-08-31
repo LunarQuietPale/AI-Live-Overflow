@@ -463,6 +463,12 @@
         var appName = window.appNames && window.appNames[pkg] ? window.appNames[pkg] : pkg;
         // 桌面/启动器不提示，避免频繁刷（精确匹配已知launcher包名，避免误伤含home的app如作业帮com.baidu.homework）
         var launchers = ['com.android.launcher','com.android.launcher3','com.miui.home','com.oppo.launcher','com.sec.android.app.launcher','com.huawei.android.launcher','com.bbk.launcher2','com.coloros.launcher','com.vivo.launcher','com.smartisanos.launcher','com.meizu.flyme.launcher'];
+        // 拼多多：切换钱包+金币配件（whale_wallet.svg），切走时切回默认（含切回桌面launcher）
+        if (pkg === 'com.xunmeng.pinduoduo') {
+          if (img.src.indexOf('whale_wallet.svg') < 0) img.src = 'whale_wallet.svg';
+        } else {
+          if (img.src.indexOf('whale_wallet.svg') >= 0) img.src = 'whale.svg';
+        }
         if (launchers.indexOf(pkg) >= 0) break;
         img.classList.add('surprise');
         showBubble('切到 ' + appName + ' 啦~');
