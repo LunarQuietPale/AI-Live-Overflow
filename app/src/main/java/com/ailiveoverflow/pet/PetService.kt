@@ -37,6 +37,9 @@ import android.view.View
 import android.view.WindowManager
 import android.webkit.WebView
 import android.webkit.WebSettings
+import android.app.usage.UsageStatsManager
+import android.app.usage.UsageEvents
+import android.app.AppOpsManager
 
 class PetService : Service() {
 
@@ -104,6 +107,15 @@ class PetService : Service() {
             emotionHandler.postDelayed(this, 15000 + (Math.random() * 15000).toLong())
         }
     }
+    // ---- 前台App检测（UsageStatsManager，每3秒轮询） ----
+    private val appHandler = Handler(Looper.getMainLooper())
+    private var lastForegroundApp = ""
+    private val appRunnable = object : Runnable {
+        override fun run() {
+            checkForegroundApp()
+            appHandler.postDelayed(this, 3000)
+        }
+    }
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -123,6 +135,8 @@ class PetService : Service() {
         emotionHandler.postDelayed(emotionRunnable, 15000)
         // 启动喝水提醒（每2小时）
         drinkHandler.postDelayed(drinkRunnable, 2 * 60 * 60 * 1000)
+        // 启动前台App检测（每3秒）
+        appHandler.postDelayed(appRunnable, 3000)
     }
 
     // ---- 感知系统初始化 ----
@@ -172,7 +186,38 @@ class PetService : Service() {
             webView.evaluateJavascript("window.petSense('time', $hour);", null)
         }
     }
+    // 前台App检测：每3秒轮询，切换时触发petSense('app', pkg)
+    private fun checkForegroundApp() {
+        try {
+            // 检查是否有"使用情况访问"权限
+            val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+            val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName)
+            else
+                @Suppress("DEPRECATION")
+                appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName)
+            if (mode != AppOpsManager.MODE_ALLOWED) return  // 没授权就跳过，避免刷屏
 
+            val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val end = System.currentTimeMillis()
+            val begin = end - 10 * 1000  // 只看最近10秒
+            val events = usm.queryEvents(begin, end)
+            var current: String? = null
+            val event = UsageEvents.Event()
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                    current = event.packageName
+                }
+            }
+            if (current != null && current != lastForegroundApp) {
+                lastForegroundApp = current
+                webView.evaluateJavascript("window.petSense('app', '$current');", null)
+            }
+        } catch (e: Exception) {
+            // 权限未授予或异常时静默跳过
+        }
+    }
     // 截图检测：ContentObserver监听MediaStore（更可靠，覆盖所有截图路径）
     private fun setupScreenshotObserver() {
         try {
@@ -536,6 +581,7 @@ class PetService : Service() {
         notifyHandler.removeCallbacks(notifyRunnable)
         emotionHandler.removeCallbacks(emotionRunnable)
         drinkHandler.removeCallbacks(drinkRunnable)
+        appHandler.removeCallbacks(appRunnable)
         hideBubbleWindow()
         if (::petView.isInitialized) {
             windowManager.removeView(petView)

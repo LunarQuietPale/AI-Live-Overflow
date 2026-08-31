@@ -179,19 +179,22 @@
   #zzz.show { opacity:1; }
   #zzz .zz {
     position:absolute;
-    font-size:26px;
+    font-size:42px;
     line-height:1;
     opacity:0;
+    /* 加描边+阴影，从海背景里突出 */
+    -webkit-text-stroke: 2px rgba(255,255,255,0.9);
+    text-shadow: 0 2px 6px rgba(0,0,0,0.45), 0 0 12px rgba(255,255,255,0.5);
   }
   #zzz.show .zz { animation: zzzFloat 3.2s ease-out infinite; }
-  #zzz .zz:nth-child(1) { animation-delay:0s; left:-14px; }
-  #zzz .zz:nth-child(2) { animation-delay:1.1s; left:8px; font-size:20px; }
-  #zzz .zz:nth-child(3) { animation-delay:2.2s; left:-22px; font-size:17px; }
+  #zzz .zz:nth-child(1) { animation-delay:0s; left:-20px; }
+  #zzz .zz:nth-child(2) { animation-delay:1.1s; left:12px; font-size:32px; }
+  #zzz .zz:nth-child(3) { animation-delay:2.2s; left:-34px; font-size:26px; }
   @keyframes zzzFloat {
     0%   { transform: translate(0, 0) scale(0.5); opacity:0; }
     15%  { opacity:1; }
     60%  { opacity:1; }
-    100% { transform: translate(28px, -58px) scale(1.5); opacity:0; }
+    100% { transform: translate(40px, -90px) scale(1.6); opacity:0; }
   }
 </style>
 </head>
@@ -447,9 +450,17 @@
           showBubble('夜深了，该睡啦~');
         }
         break;
+      case 'app':
+        // 前台App切换（data为包名），基础版先提示，App反应映射后续扩展
+        var pkg = data;
+        var appName = window.appNames && window.appNames[pkg] ? window.appNames[pkg] : pkg;
+        // 桌面/启动器不提示，避免频繁刷
+        if (pkg.indexOf('launcher') >= 0 || pkg.indexOf('home') >= 0) break;
+        img.classList.add('surprise');
+        showBubble('切到 ' + appName + ' 啦~');
+        break;
     }
   };
-
   // 情绪引擎：Supabase轮询触发（由Kotlin侧调用）
   window.petEmotion = function(emotion, intensity) {
     if (isAngry) return;  // 生气霸屏优先
