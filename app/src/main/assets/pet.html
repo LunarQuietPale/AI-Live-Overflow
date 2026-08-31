@@ -213,7 +213,10 @@
   // 清掉所有动画类
   function clearAnim() {
     img.classList.remove('react', 'shake', 'spin', 'angry', 'doubleTap', 'hide', 'fling', 'swim', 'happy', 'surprise', 'sleepy', 'wake', 'angryFilter');
+    // 强制重启待机呼吸动画，避免动作/睡眠后 idle 浮动丢失
+    img.style.animation = 'none';
     void img.offsetWidth;
+    img.style.animation = '';
   }
 
   // ---- 连戳递进（生气） ----
