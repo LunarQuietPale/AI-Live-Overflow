@@ -32,6 +32,26 @@
     display:block;
     animation: idle 3s ease-in-out infinite;
   }
+  /* 金币独立图层：覆盖在petImg上，做弹出动画 */
+  #coinWrap {
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    pointer-events:none;
+    opacity:0;
+    animation: idle 3s ease-in-out infinite;  /* 与petImg同步呼吸浮动，避免错位 */
+  }
+  #coinWrap.show { opacity:1; }
+  #coinImg {
+    width:100%; height:100%;
+    object-fit:contain;
+    display:block;
+  }
+  /* 金币弹出动画：从藏在钱包里(translateY 0)斜向上冒出到最终位置 */
+  #coinWrap.pop #coinImg { animation: coinPop 0.5s ease forwards; }
+  @keyframes coinPop {
+    0%   { transform: translate(0, 0); }
+    100% { transform: translate(-2px, -8px); }
+  }
   /* 待机呼吸动画 */
   @keyframes idle {
     0%,100% { transform: translateY(0) scale(1); }
@@ -202,6 +222,7 @@
 <div id="pet">
   <div class="petWrap">
     <img id="petImg" src="whale.svg" alt="pet">
+    <div id="coinWrap"><img id="coinImg" src="whale_coin.svg" alt="coin"></div>
     <div id="zzz"><span class="zz">💤</span><span class="zz">💤</span><span class="zz">💤</span></div>
   </div>
   <div id="bubble">哼！</div>
@@ -210,6 +231,8 @@
   var img = document.getElementById('petImg');
   var bubble = document.getElementById('bubble');
   var zzz = document.getElementById('zzz');
+  var coinWrap = document.getElementById('coinWrap');
+  var coinPopTimer = null;  // 金币弹出动画定时器
   // 清掉所有动画类
   function clearAnim() {
     img.classList.remove('react', 'shake', 'spin', 'angry', 'doubleTap', 'hide', 'fling', 'swim', 'happy', 'surprise', 'sleepy', 'wake', 'angryFilter');
@@ -463,15 +486,32 @@
         var appName = window.appNames && window.appNames[pkg] ? window.appNames[pkg] : pkg;
         // 桌面/启动器不提示，避免频繁刷（精确匹配已知launcher包名，避免误伤含home的app如作业帮com.baidu.homework）
         var launchers = ['com.android.launcher','com.android.launcher3','com.miui.home','com.oppo.launcher','com.sec.android.app.launcher','com.huawei.android.launcher','com.bbk.launcher2','com.coloros.launcher','com.vivo.launcher','com.smartisanos.launcher','com.meizu.flyme.launcher'];
-        // 拼多多：切换钱包+金币配件（whale_wallet.svg），切走时切回默认（含切回桌面launcher）
+        // 拼多多：切换钱包+金币配件（whale_wallet.svg），金币独立层做弹出动画，切走时切回默认（含切回桌面launcher）
         if (pkg === 'com.xunmeng.pinduoduo') {
           if (img.src.indexOf('whale_wallet.svg') < 0) img.src = 'whale_wallet.svg';
+          // 显示金币层（起始位置藏在钱包里）
+          coinWrap.classList.add('show');
+          coinWrap.classList.remove('pop');
+          // 0.5s后金币弹出动画（斜向上冒出到最终位置）
+          if (coinPopTimer) clearTimeout(coinPopTimer);
+          coinPopTimer = setTimeout(function() {
+            coinWrap.classList.add('pop');
+          }, 500);
         } else {
+          // 切走：隐藏金币层、清弹出动画、切回默认鲸鱼
+          if (coinPopTimer) { clearTimeout(coinPopTimer); coinPopTimer = null; }
+          coinWrap.classList.remove('pop');
+          coinWrap.classList.remove('show');
           if (img.src.indexOf('whale_wallet.svg') >= 0) img.src = 'whale.svg';
         }
         if (launchers.indexOf(pkg) >= 0) break;
         img.classList.add('surprise');
-        showBubble('切到 ' + appName + ' 啦~');
+        // 拼多多气泡：从开始持续到动画结束（约4.5s）
+        if (pkg === 'com.xunmeng.pinduoduo') {
+          showBubble('切到拼多多啦~让我审批一下', 4500);
+        } else {
+          showBubble('切到 ' + appName + ' 啦~');
+        }
         break;
     }
   };

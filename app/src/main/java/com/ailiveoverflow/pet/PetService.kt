@@ -316,13 +316,13 @@ class PetService : Service() {
     // ---- 独立气泡悬浮窗 ----
     private inner class BubbleBridge {
         @android.webkit.JavascriptInterface
-        fun showBubble(text: String) {
+        fun showBubble(text: String, durationMs: Int = 2500) {
             bubbleHandler.post {
-                showBubbleWindow(text)
+                showBubbleWindow(text, durationMs)
             }
         }
     }
-    private fun showBubbleWindow(text: String) {
+    private fun showBubbleWindow(text: String, durationMs: Int = 2500) {
         if (!Settings.canDrawOverlays(this)) return
         bubbleHandler.removeCallbacks(bubbleHideRunnable)
         notifyHandler.removeCallbacks(notifyRunnable)
@@ -361,7 +361,7 @@ class PetService : Service() {
             (bubbleView as android.widget.TextView).text = text
         }
         positionBubbleBelowPet()
-        bubbleHandler.postDelayed(bubbleHideRunnable, 2500)
+        bubbleHandler.postDelayed(bubbleHideRunnable, durationMs.toLong())
     }
     private fun positionBubbleBelowPet() {
         val bp = bubbleParams ?: return
