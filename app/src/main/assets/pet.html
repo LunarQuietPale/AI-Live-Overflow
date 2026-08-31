@@ -21,6 +21,17 @@
     width:100%; height:100%;
     animation: idle 3s ease-in-out infinite;
   }
+  .petWrap {
+    position:relative;
+    width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #petImg {
+    width:100%; height:100%;
+    object-fit:contain;
+    display:block;
+    animation: idle 3s ease-in-out infinite;
+  }
   /* 待机呼吸动画 */
   @keyframes idle {
     0%,100% { transform: translateY(0) scale(1); }
@@ -159,7 +170,7 @@
   /* 睡眠：头顶💤打呼吹泡泡（持续循环，与闭眼同步） */
   #zzz {
     position:absolute;
-    top:-16px; left:50%;
+    top:4%; left:50%;
     transform:translateX(-50%);
     pointer-events:none;
     z-index:20;
@@ -168,26 +179,28 @@
   #zzz.show { opacity:1; }
   #zzz .zz {
     position:absolute;
-    font-size:18px;
+    font-size:26px;
     line-height:1;
     opacity:0;
   }
   #zzz.show .zz { animation: zzzFloat 3.2s ease-out infinite; }
-  #zzz .zz:nth-child(1) { animation-delay:0s; left:-8px; }
-  #zzz .zz:nth-child(2) { animation-delay:1.1s; left:2px; font-size:14px; }
-  #zzz .zz:nth-child(3) { animation-delay:2.2s; left:-14px; font-size:12px; }
+  #zzz .zz:nth-child(1) { animation-delay:0s; left:-14px; }
+  #zzz .zz:nth-child(2) { animation-delay:1.1s; left:8px; font-size:20px; }
+  #zzz .zz:nth-child(3) { animation-delay:2.2s; left:-22px; font-size:17px; }
   @keyframes zzzFloat {
     0%   { transform: translate(0, 0) scale(0.5); opacity:0; }
     15%  { opacity:1; }
     60%  { opacity:1; }
-    100% { transform: translate(16px, -46px) scale(1.4); opacity:0; }
+    100% { transform: translate(28px, -58px) scale(1.5); opacity:0; }
   }
 </style>
 </head>
 <body>
 <div id="pet">
-  <img id="petImg" src="whale.svg" alt="pet">
-  <div id="zzz"><span class="zz">💤</span><span class="zz">💤</span><span class="zz">💤</span></div>
+  <div class="petWrap">
+    <img id="petImg" src="whale.svg" alt="pet">
+    <div id="zzz"><span class="zz">💤</span><span class="zz">💤</span><span class="zz">💤</span></div>
+  </div>
   <div id="bubble">哼！</div>
 </div>
 <script>
@@ -501,8 +514,7 @@
         bubble.classList.remove('show');
         img.src = 'whale_sleep.svg';  // 睡眠切换闭眼
         img.classList.add('sleepy');
-        zzz.classList.add('show');     // 头顶Zzz飘动
-        showBubble('Zzz...');
+        zzz.classList.add('show');     // 头顶💤打呼吹泡泡
       }
       sleepCheckTimer = setTimeout(check, 30 * 1000);
     }
