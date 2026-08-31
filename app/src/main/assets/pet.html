@@ -433,7 +433,9 @@
   // 显示气泡文字（通过独立悬浮窗，不受浮窗尺寸限制）
   function showBubble(text, ms) {
     if (window.Android && window.Android.showBubble) {
-      window.Android.showBubble(text);
+      // 必须显式传durationMs：Kotlin默认参数在JavascriptInterface桥接中不生效，
+      // 只传一个参数会导致桥接抛异常，进而中断整个脚本（气泡/生气恢复/检测全失效）
+      window.Android.showBubble(text, ms || 2500);
     }
   }
   // 感知统一入口

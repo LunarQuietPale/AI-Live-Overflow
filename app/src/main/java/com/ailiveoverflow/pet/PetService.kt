@@ -316,7 +316,7 @@ class PetService : Service() {
     // ---- 独立气泡悬浮窗 ----
     private inner class BubbleBridge {
         @android.webkit.JavascriptInterface
-        fun showBubble(text: String, durationMs: Int = 2500) {
+        fun showBubble(text: String, durationMs: Int) {
             bubbleHandler.post {
                 showBubbleWindow(text, durationMs)
             }
