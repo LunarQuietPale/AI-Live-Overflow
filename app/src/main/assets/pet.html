@@ -461,8 +461,9 @@
         // 前台App切换（data为包名），基础版先提示，App反应映射后续扩展
         var pkg = data;
         var appName = window.appNames && window.appNames[pkg] ? window.appNames[pkg] : pkg;
-        // 桌面/启动器不提示，避免频繁刷
-        if (pkg.indexOf('launcher') >= 0 || pkg.indexOf('home') >= 0) break;
+        // 桌面/启动器不提示，避免频繁刷（精确匹配已知launcher包名，避免误伤含home的app如作业帮com.baidu.homework）
+        var launchers = ['com.android.launcher','com.android.launcher3','com.miui.home','com.oppo.launcher','com.sec.android.app.launcher','com.huawei.android.launcher','com.bbk.launcher2','com.coloros.launcher','com.vivo.launcher','com.smartisanos.launcher','com.meizu.flyme.launcher'];
+        if (launchers.indexOf(pkg) >= 0) break;
         img.classList.add('surprise');
         showBubble('切到 ' + appName + ' 啦~');
         break;
