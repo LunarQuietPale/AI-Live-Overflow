@@ -218,8 +218,12 @@
     void img.offsetWidth;
     img.style.animation = '';
   }
-
-  // ---- 连戳递进（生气） ----
+  // 动画播完自动清类，恢复待机浮动（idle是infinite不触发animationend，动作动画播完触发）
+  // 生气霸屏/睡眠时跳过：生气让angryTimer处理3秒霸屏，睡眠靠isSleeping+闭眼SVG维持
+  img.addEventListener('animationend', function() {
+    if (!isAngry && !isSleeping) clearAnim();
+  });
+// ---- 连戳递进（生气） ----
   var tapCount = 0;       // 连戳计数
   var lastTapTime = 0;    // 上次戳的时间
   var angryTimer = null;  // 消气定时器
