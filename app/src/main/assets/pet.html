@@ -244,6 +244,7 @@
   // 动画播完自动清类，恢复待机浮动（idle是infinite不触发animationend，动作动画播完触发）
   // 生气霸屏/睡眠时跳过：生气让angryTimer处理3秒霸屏，睡眠靠isSleeping+闭眼SVG维持
   img.addEventListener('animationend', function() {
+    if (img.classList.contains("hide")) return;  // 长按隐藏时跳过，2秒定时器才是移除时机
     if (!isAngry && !isSleeping) clearAnim();
   });
 // ---- 连戳递进（生气） ----
