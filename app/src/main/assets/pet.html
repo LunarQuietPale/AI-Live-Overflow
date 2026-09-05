@@ -32,25 +32,30 @@
     display:block;
     animation: idle 3s ease-in-out infinite;
   }
-  /* 金币独立图层：覆盖在petImg上，做弹出动画 */
+  /* 金币独立图层：裁剪容器，让金币从钱包开口(约petImg纵向60%)冒出半个 */
   #coinWrap {
-    position:absolute; inset:0;
-    width:100%; height:100%;
+    position:absolute;
+    left:17%; top:50%;
+    width:40%; height:10%;
+    overflow:hidden;
     pointer-events:none;
     opacity:0;
-    animation: idle 3s ease-in-out infinite;  /* 与petImg同步呼吸浮动，避免错位 */
+    animation: idle 3s ease-in-out infinite;  /* 与petImg同步呼吸浮动，金币相对钱包静止 */
+    z-index:6;   /* 在petImg之上，但金币下半被容器底部(钱包开口)裁掉，透出钱包 */
   }
   #coinWrap.show { opacity:1; }
   #coinImg {
-    width:100%; height:100%;
-    object-fit:contain;
+    position:absolute;
+    left:23.25%; bottom:-76%;
+    width:81%; height:auto;
+    transform:translateY(46%);  /* 默认藏在钱包里(被裁)，pop时冒出 */
     display:block;
   }
-  /* 金币弹出动画：从藏在钱包里(translateY 0)斜向上冒出到最终位置 */
-  #coinWrap.pop #coinImg { animation: coinPop 1.5s ease forwards; }
+  /* 金币弹出：初始藏在钱包里(translateY下移被裁)，斜向上冒出到钱包开口 */
+  #coinWrap.pop #coinImg { animation: coinPop 1.5s ease-out forwards; }
   @keyframes coinPop {
-    0%   { transform: translate(0, 0); }
-    100% { transform: translate(-6px, -22px); }
+    0%   { transform: translate(0, 46%); }
+    100% { transform: translate(30%, 0); }
   }
   /* 待机呼吸动画 */
   @keyframes idle {
@@ -160,12 +165,11 @@
     80% { transform: translateY(-5px) scale(1.05) rotate(3deg); }
     100% { transform: translateY(0) scale(1); }
   }
-  /* 感知：惊讶 */
-  .surprise { animation: surprise 0.5s ease !important; }
+  /* 感知：惊讶（放大跳动，600ms，结束后必须回scale 1） */
+  .surprise { animation: surprise 0.6s ease-out !important; }
   @keyframes surprise {
     0% { transform: scale(1); }
-    30% { transform: scale(1.3); }
-    60% { transform: scale(0.95); }
+    50% { transform: scale(1.15); }
     100% { transform: scale(1); }
   }
   /* 感知：困倦（打哈欠） */
@@ -221,7 +225,8 @@
 <body>
 <div id="pet">
   <div class="petWrap">
-    <div id="coinWrap"><img id="coinImg" src="whale_coin.svg" alt="coin"></div>    <img id="petImg" src="whale.svg" alt="pet">
+    <img id="petImg" src="whale.svg" alt="pet">
+    <div id="coinWrap"><img id="coinImg" src="whale_coin.svg" alt="coin"></div>
     <div id="zzz"><span class="zz">💤</span><span class="zz">💤</span><span class="zz">💤</span></div>
   </div>
   <div id="bubble">哼！</div>
@@ -232,6 +237,7 @@
   var zzz = document.getElementById('zzz');
   var coinWrap = document.getElementById('coinWrap');
   var coinPopTimer = null;  // 金币弹出动画定时器
+  var pddTimer = null;      // 拼多多切钱包图定时器
   var pddPending = false;   // 拼多多流程：surprise跳完后需换钱包图
   function clearAnim() {
     img.classList.remove('react', 'shake', 'spin', 'angry', 'doubleTap', 'hide', 'fling', 'swim', 'happy', 'surprise', 'sleepy', 'wake', 'angryFilter');
@@ -244,21 +250,41 @@
   // 生气霸屏/睡眠时跳过：生气让angryTimer处理3秒霸屏，睡眠靠isSleeping+闭眼SVG维持
   img.addEventListener('animationend', function() {
     if (img.classList.contains("hide")) return;  // 长按隐藏时跳过，2秒定时器才是移除时机
-    // 拼多多流程：surprise跳完后换钱包图，显示金币层，2秒后触发金币弹出
+    if (isAngry) return;    // 生气霸屏：由angryTimer在3秒后统一恢复
+    if (isSleeping) return; // 睡眠：保持静止闭眼，不恢复浮动
+    // 拼多多流程：放大跳动(600ms)结束后，按时间线切钱包图+弹金币
     if (pddPending) {
       pddPending = false;
-      if (img.src.indexOf('whale_wallet.svg') < 0) img.src = 'whale_wallet.svg';
-      // 显示金币层，并同步重置petImg的idle动画，让金币和鲸鱼相对静止
-      coinWrap.classList.add('show');
-      coinWrap.classList.remove('pop');
-      img.style.animation = 'none'; void img.offsetWidth; img.style.animation = '';
-      // 2秒后触发金币弹出动画
-      if (coinPopTimer) clearTimeout(coinPopTimer);
-      coinPopTimer = setTimeout(function() {
-        coinWrap.classList.add('pop');
-      }, 2000);
+      img.classList.remove('surprise');
+      // 距开始已约600ms，再等200ms凑到第0.8s：切钱包图并淡入
+      if (pddTimer) clearTimeout(pddTimer);
+      pddTimer = setTimeout(function() {
+        pddTimer = null;
+        if (img.src.indexOf('whale_wallet.svg') < 0) {
+          img.style.transition = 'opacity 0.3s ease';
+          img.style.opacity = '0';
+          var _self = img;
+          setTimeout(function() {
+            _self.src = 'whale_wallet.svg';
+            _self.style.opacity = '1';
+            setTimeout(function(){ _self.style.transition=''; }, 350);
+          }, 30);
+        }
+        // 显示金币层（藏在钱包开口处，待弹出）
+        coinWrap.classList.add('show');
+        coinWrap.classList.remove('pop');
+        // 重启idle，让鲸鱼和金币层同步呼吸浮动
+        img.style.animation = 'none'; void img.offsetWidth; img.style.animation = '';
+        // 第2.8s（钱包出现满2s后）触发金币从开口弹出
+        if (coinPopTimer) clearTimeout(coinPopTimer);
+        coinPopTimer = setTimeout(function() {
+          coinWrap.classList.add('pop');
+        }, 2000);
+      }, 200);
       return;
     }
+    // 普通动作播完：移除动作类，恢复待机浮动
+    clearAnim();
   });
 // ---- 连戳递进（生气） ----
   var tapCount = 0;       // 连戳计数
@@ -509,9 +535,11 @@
         } else {
           // 切走：清拼多多流程状态、隐藏金币层、切回默认鲸鱼
           pddPending = false;
+          if (pddTimer) { clearTimeout(pddTimer); pddTimer = null; }
           if (coinPopTimer) { clearTimeout(coinPopTimer); coinPopTimer = null; }
           coinWrap.classList.remove('pop');
           coinWrap.classList.remove('show');
+          img.style.transition = ''; img.style.opacity = '';
           if (img.src.indexOf('whale_wallet.svg') >= 0) img.src = 'whale.svg';
         }
         if (launchers.indexOf(pkg) >= 0) break;
